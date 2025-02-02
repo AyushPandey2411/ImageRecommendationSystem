@@ -25,9 +25,11 @@ model = tensorflow.keras.Sequential([
     model,
     GlobalMaxPooling2D()
 ])
+
 img = Image.open('swift.png')
 st.image(img, width=600)
 st.title('SwiftBuy Image Recommender System')
+st.markdown("Welcome to the **SwiftBuy Image Recommender System**. Upload an image to get similar image recommendations.")
 
 # Directory to save uploaded files
 upload_dir = 'uploads'
@@ -65,12 +67,14 @@ def recommend(features, feature_list):
     return indices
 
 # File upload step
+st.markdown("### Step 1: Upload an Image")
 uploaded_file = st.file_uploader("Choose an image", type=['png', 'jpg', 'jpeg'])
 if uploaded_file is not None:
     file_path = save_uploaded_file(uploaded_file)
     if file_path:
         # Display the uploaded file
         display_image = Image.open(file_path)
+        display_image.thumbnail((300, 300))  # Resize image for better presentation
         st.image(display_image, caption='Uploaded Image', use_column_width=True)
 
         # Extract features and get recommendations
@@ -79,7 +83,10 @@ if uploaded_file is not None:
             indices = recommend(features, feature_list)
             
             # Display the recommended images
-            st.subheader("Recommended Images:")
+            st.markdown("### Step 2: Recommended Images")
+            st.write("Here are the top 5 similar images based on your uploaded image:")
+
+            # Using columns to display recommended images in a grid
             cols = st.columns(5)
             for i, col in enumerate(cols):
                 if i < len(indices[0]):
@@ -88,7 +95,8 @@ if uploaded_file is not None:
                         recommended_image_path = normalize_path(filenames[indices[0][i]])
                         try:
                             recommended_image = Image.open(recommended_image_path)
-                            st.image(recommended_image, use_column_width=True)
+                            recommended_image.thumbnail((200, 200))  # Resize recommended images
+                            st.image(recommended_image, caption=f"Recommended Image {i+1}", use_column_width=True)
                         except FileNotFoundError:
                             st.warning(f"Image not found: {recommended_image_path}")
     else:
