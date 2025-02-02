@@ -10,9 +10,13 @@ from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input
 from sklearn.neighbors import NearestNeighbors
 from numpy.linalg import norm
 
+# Set page config for better UI
+st.set_page_config(page_title="SwiftBuy", layout='wide')
+
 # Load feature list and filenames
 feature_list = np.array(pickle.load(open('embeddings.pkl', 'rb')))
 filenames = pickle.load(open('filenames.pkl', 'rb'))
+
 
 # Normalize the file paths to ensure consistency across environments
 def normalize_path(path):
@@ -26,28 +30,27 @@ model = tensorflow.keras.Sequential([
     GlobalMaxPooling2D()
 ])
 
-img = Image.open('swift.png')
-st.image(img, width=600)
-st.title('SwiftBuy Image Recommender System')
-st.markdown("Welcome to the **SwiftBuy Image Recommender System**. Upload an image to get similar image recommendations.")
+# Custom header styling
+st.markdown("""
+    <h1 style='text-align: center; color: #4A90E2;'>SwiftBuy Image Recommender</h1>
+    <p style='text-align: center; font-size: 18px;'>Upload an image and find visually similar products instantly!</p>
+    <hr style='border:1px solid #ddd;'>
+    """, unsafe_allow_html=True)
 
 # Directory to save uploaded files
 upload_dir = 'uploads'
-
-# Create upload directory if it doesn't exist
 if not os.path.exists(upload_dir):
     os.makedirs(upload_dir)
 
 def save_uploaded_file(uploaded_file):
     """Save uploaded file to the specified directory."""
     try:
-        file_path = os.path.join(upload_dir, uploaded_file.name)
-        with open(file_path, 'wb') as f:
+        with open(os.path.join(upload_dir, uploaded_file.name), 'wb') as f:
             f.write(uploaded_file.getbuffer())
-        return file_path  # Return the path of the saved file
+        return True
     except Exception as e:
         st.error(f"Error saving file: {e}")
-        return None
+        return False
 
 def feature_extraction(img_path, model):
     """Extract features from the image using the pre-trained model."""
@@ -67,37 +70,24 @@ def recommend(features, feature_list):
     return indices
 
 # File upload step
-st.markdown("### Step 1: Upload an Image")
 uploaded_file = st.file_uploader("Choose an image", type=['png', 'jpg', 'jpeg'])
 if uploaded_file is not None:
-    file_path = save_uploaded_file(uploaded_file)
-    if file_path:
-        # Display the uploaded file
-        display_image = Image.open(file_path)
-        display_image.thumbnail((300, 300))  # Resize image for better presentation
-        st.image(display_image, caption='Uploaded Image', use_column_width=True)
-
-        # Extract features and get recommendations
+    if save_uploaded_file(uploaded_file):
+        col1, col2, col3 = st.columns([1, 2, 1])  # Center align image
+        with col2:
+            st.image(uploaded_file, caption='Uploaded Image', width=250)
+        
         if st.button('Get Recommendations'):
-            features = feature_extraction(file_path, model)
-            indices = recommend(features, feature_list)
+            with st.spinner('Processing...'):
+                features = feature_extraction(os.path.join(upload_dir, uploaded_file.name), model)
+                indices = recommend(features, feature_list)
             
-            # Display the recommended images
-            st.markdown("### Step 2: Recommended Images")
-            st.write("Here are the top 5 similar images based on your uploaded image:")
-
-            # Using columns to display recommended images in a grid
+            # Display recommended images
+            st.subheader("Recommended Products:")
             cols = st.columns(5)
             for i, col in enumerate(cols):
                 if i < len(indices[0]):
                     with col:
-                        # Ensure filenames are correct and use the full path
-                        recommended_image_path = normalize_path(filenames[indices[0][i]])
-                        try:
-                            recommended_image = Image.open(recommended_image_path)
-                            recommended_image.thumbnail((200, 200))  # Resize recommended images
-                            st.image(recommended_image, caption=f"Recommended Image {i+1}", use_column_width=True)
-                        except FileNotFoundError:
-                            st.warning(f"Image not found: {recommended_image_path}")
+                        st.image(filenames[indices[0][i]], use_container_width=True)
     else:
-        st.error("Some error occurred in file upload")
+        st.error("Some error occurred in file upload.")
