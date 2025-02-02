@@ -14,6 +14,10 @@ from numpy.linalg import norm
 feature_list = np.array(pickle.load(open('embeddings.pkl', 'rb')))
 filenames = pickle.load(open('filenames.pkl', 'rb'))
 
+# Normalize the file paths to ensure consistency across environments
+def normalize_path(path):
+    return path.replace('\\', '/')
+
 # Load ResNet50 model
 model = ResNet50(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
 model.trainable = False
@@ -81,8 +85,11 @@ if uploaded_file is not None:
                 if i < len(indices[0]):
                     with col:
                         # Ensure filenames are correct and use the full path
-                        recommended_image_path = filenames[indices[0][i]]
-                        recommended_image = Image.open(recommended_image_path)
-                        st.image(recommended_image, use_column_width=True)
+                        recommended_image_path = normalize_path(filenames[indices[0][i]])
+                        try:
+                            recommended_image = Image.open(recommended_image_path)
+                            st.image(recommended_image, use_column_width=True)
+                        except FileNotFoundError:
+                            st.warning(f"Image not found: {recommended_image_path}")
     else:
         st.error("Some error occurred in file upload")
