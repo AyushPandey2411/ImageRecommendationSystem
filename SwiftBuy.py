@@ -25,14 +25,27 @@ model = tensorflow.keras.Sequential([
     model,
     GlobalMaxPooling2D()
 ])
-img = Image.open('swift.png')
-st.image(img, width=600)
-st.title('SwiftBuy Image Recommender System')
+
+# Set up UI layout
+st.set_page_config(page_title='SwiftBuy', layout='wide')
+st.markdown("""
+    <style>
+    .main {
+        text-align: center;
+    }
+    .uploaded-img {
+        border-radius: 10px;
+        box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# Display logo and title
+st.image('swift.png', width=500)
+st.title('SwiftBuy - Image Recommender System')
 
 # Directory to save uploaded files
 upload_dir = 'uploads'
-
-# Create upload directory if it doesn't exist
 if not os.path.exists(upload_dir):
     os.makedirs(upload_dir)
 
@@ -42,7 +55,7 @@ def save_uploaded_file(uploaded_file):
         file_path = os.path.join(upload_dir, uploaded_file.name)
         with open(file_path, 'wb') as f:
             f.write(uploaded_file.getbuffer())
-        return file_path  # Return the path of the saved file
+        return file_path
     except Exception as e:
         st.error(f"Error saving file: {e}")
         return None
@@ -69,27 +82,27 @@ uploaded_file = st.file_uploader("Choose an image", type=['png', 'jpg', 'jpeg'])
 if uploaded_file is not None:
     file_path = save_uploaded_file(uploaded_file)
     if file_path:
-        # Display the uploaded file
-        display_image = Image.open(file_path)
-        st.image(display_image, caption='Uploaded Image', use_container_width=True)
-
-        # Extract features and get recommendations
-        if st.button('Get Recommendations'):
-            features = feature_extraction(file_path, model)
-            indices = recommend(features, feature_list)
-            
-            # Display the recommended images
-            st.subheader("Recommended Images:")
-            cols = st.columns(5)
-            for i, col in enumerate(cols):
-                if i < len(indices[0]):
-                    with col:
-                        # Ensure filenames are correct and use the full path
-                        recommended_image_path = normalize_path(filenames[indices[0][i]])
-                        try:
-                            recommended_image = Image.open(recommended_image_path)
-                            st.image(recommended_image, use_column_width=True)
-                        except FileNotFoundError:
-                            st.warning(f"Image not found: {recommended_image_path}")
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            display_image = Image.open(file_path)
+            st.image(display_image, caption='Uploaded Image', width=200)
+        with col2:
+            st.write("**Your uploaded image is successfully loaded. Click below to get recommendations!**")
+            if st.button('Get Recommendations', key='recommend_button'):
+                features = feature_extraction(file_path, model)
+                indices = recommend(features, feature_list)
+                
+                # Display recommended images
+                st.subheader("Recommended Images:")
+                cols = st.columns(5)
+                for i, col in enumerate(cols):
+                    if i < len(indices[0]):
+                        with col:
+                            recommended_image_path = normalize_path(filenames[indices[0][i]])
+                            try:
+                                recommended_image = Image.open(recommended_image_path)
+                                st.image(recommended_image, use_container_width=True)
+                            except FileNotFoundError:
+                                st.warning(f"Image not found: {recommended_image_path}")
     else:
         st.error("Some error occurred in file upload")
