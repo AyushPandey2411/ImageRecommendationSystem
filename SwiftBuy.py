@@ -37,12 +37,18 @@ st.markdown("""
         border-radius: 10px;
         box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
     }
+    .title {
+        font-size: 36px;
+        font-weight: bold;
+        text-align: center;
+        color: #ff5733;
+    }
     </style>
     """, unsafe_allow_html=True)
 
 # Display logo and title
 st.image('swift.png', width=500)
-st.title('SwiftBuy - Image Recommender System')
+st.markdown("<div class='title'>SwiftBuy - AI-Powered Image Recommender System</div>", unsafe_allow_html=True)
 
 # Directory to save uploaded files
 upload_dir = 'uploads'
@@ -89,8 +95,9 @@ if uploaded_file is not None:
         with col2:
             st.write("**Your uploaded image is successfully loaded. Click below to get recommendations!**")
             if st.button('Get Recommendations', key='recommend_button'):
-                features = feature_extraction(file_path, model)
-                indices = recommend(features, feature_list)
+                with st.spinner('Finding the best matches for you...'):
+                    features = feature_extraction(file_path, model)
+                    indices = recommend(features, feature_list)
                 
                 # Display recommended images
                 st.subheader("Recommended Images:")
