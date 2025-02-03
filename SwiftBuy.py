@@ -14,7 +14,7 @@ from numpy.linalg import norm
 feature_list = np.array(pickle.load(open('embeddings.pkl', 'rb')))
 filenames = pickle.load(open('filenames.pkl', 'rb'))
 
-# Normalize the file paths to ensure consistency across environments
+# Normalize file paths for compatibility
 def normalize_path(path):
     return path.replace('\\', '/')
 
@@ -25,14 +25,26 @@ model = tensorflow.keras.Sequential([
     model,
     GlobalMaxPooling2D()
 ])
-img = Image.open('swift.png')
-st.image(img, width=600)
-st.title('SwiftBuy Image Recommender System')
+
+# UI Customization
+st.set_page_config(page_title="SwiftBuy Image Recommender", layout="wide")
+
+# Apply custom CSS
+st.markdown("""
+    <style>
+        .main {background-color: #f5f5f5;}
+        .stButton>button {border-radius: 10px; background-color: #ff5733; color: white; font-size: 16px; padding: 10px 20px;}
+        .uploaded-img {border: 2px solid #ff5733; padding: 10px; border-radius: 10px;}
+        .recommended-img {border: 2px solid #007BFF; padding: 5px; border-radius: 10px;}
+    </style>
+""", unsafe_allow_html=True)
+
+# Banner Image
+st.image("swift.png", width=500)
+st.markdown("<h1 style='text-align: center; color: #FF5733; border-bottom: 4px solid #FF5733; padding-bottom: 10px;'>SwiftBuy Image Recommender System</h1>", unsafe_allow_html=True)
 
 # Directory to save uploaded files
 upload_dir = 'uploads'
-
-# Create upload directory if it doesn't exist
 if not os.path.exists(upload_dir):
     os.makedirs(upload_dir)
 
@@ -64,31 +76,35 @@ def recommend(features, feature_list):
     distances, indices = neighbors.kneighbors([features])
     return indices
 
-# File upload step
-uploaded_file = st.file_uploader("Choose an image", type=['png', 'jpg', 'jpeg'])
+# File Upload Section
+st.markdown("<h3 style='text-align: center; color: #4CAF50;'>Upload an Image to Find Similar Products</h3>", unsafe_allow_html=True)
+
+uploaded_file = st.file_uploader("", type=['png', 'jpg', 'jpeg'])
 if uploaded_file is not None:
     file_path = save_uploaded_file(uploaded_file)
     if file_path:
-        # Display the uploaded file
-        display_image = Image.open(file_path)
-        st.image(display_image, caption='Uploaded Image', use_column_width=True)
+        # Display uploaded image with styling
+        st.markdown("<div class='uploaded-img'>", unsafe_allow_html=True)
+        st.image(Image.open(file_path), caption='Uploaded Image', width=350)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-        # Extract features and get recommendations
-        if st.button('Get Recommendations'):
+        # Get recommendations button
+        if st.button('Get Recommendations', help="Click to find similar images"):
             features = feature_extraction(file_path, model)
             indices = recommend(features, feature_list)
             
-            # Display the recommended images
-            st.subheader("Recommended Images:")
-            cols = st.columns(5)
+            # Display recommended images in a responsive layout
+            st.markdown("<h3 style='color: #007BFF; border-bottom: 3px solid #007BFF; padding-bottom: 5px;'>Recommended Images:</h3>", unsafe_allow_html=True)
+            cols = st.columns([1,1,1,1,1])
             for i, col in enumerate(cols):
                 if i < len(indices[0]):
                     with col:
-                        # Ensure filenames are correct and use the full path
                         recommended_image_path = normalize_path(filenames[indices[0][i]])
                         try:
                             recommended_image = Image.open(recommended_image_path)
-                            st.image(recommended_image, use_column_width=True)
+                            st.markdown("<div class='recommended-img'>", unsafe_allow_html=True)
+                            st.image(recommended_image, use_container_width=True)
+                            st.markdown("</div>", unsafe_allow_html=True)
                         except FileNotFoundError:
                             st.warning(f"Image not found: {recommended_image_path}")
     else:
