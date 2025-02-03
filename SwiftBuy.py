@@ -25,6 +25,7 @@ model = tensorflow.keras.Sequential([
     model,
     GlobalMaxPooling2D()
 ])
+
 img = Image.open('swift.png')
 st.image(img, width=600)
 st.title('SwiftBuy Image Recommender System')
@@ -69,27 +70,28 @@ uploaded_file = st.file_uploader("Choose an image", type=['png', 'jpg', 'jpeg'])
 if uploaded_file is not None:
     file_path = save_uploaded_file(uploaded_file)
     if file_path:
-        # Display the uploaded file
+        # Display the uploaded file with smaller size
         display_image = Image.open(file_path)
-        st.image(display_image, caption='Uploaded Image', use_column_width=True)
+        st.image(display_image, caption='Uploaded Image', use_container_width=True)
 
-        # Extract features and get recommendations
-        if st.button('Get Recommendations'):
-            features = feature_extraction(file_path, model)
-            indices = recommend(features, feature_list)
-            
-            # Display the recommended images
-            st.subheader("Recommended Images:")
-            cols = st.columns(5)
-            for i, col in enumerate(cols):
-                if i < len(indices[0]):
-                    with col:
-                        # Ensure filenames are correct and use the full path
-                        recommended_image_path = normalize_path(filenames[indices[0][i]])
-                        try:
-                            recommended_image = Image.open(recommended_image_path)
-                            st.image(recommended_image, use_column_width=True)
-                        except FileNotFoundError:
-                            st.warning(f"Image not found: {recommended_image_path}")
+        # Extract features and get recommendations with a spinner
+        with st.spinner('Processing your image...'):
+            if st.button('Get Recommendations'):
+                features = feature_extraction(file_path, model)
+                indices = recommend(features, feature_list)
+                
+                # Display the recommended images in a mobile-friendly way
+                st.subheader("Recommended Images:")
+                cols = st.columns(5)
+                for i, col in enumerate(cols):
+                    if i < len(indices[0]):
+                        with col:
+                            # Ensure filenames are correct and use the full path
+                            recommended_image_path = normalize_path(filenames[indices[0][i]])
+                            try:
+                                recommended_image = Image.open(recommended_image_path)
+                                st.image(recommended_image, use_container_width=True)
+                            except FileNotFoundError:
+                                st.warning(f"Image not found: {recommended_image_path}")
     else:
         st.error("Some error occurred in file upload")
