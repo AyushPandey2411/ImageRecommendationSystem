@@ -1,121 +1,130 @@
+# imports the Pandas library, used for data manipulation and analysis.
+import pandas as pd
+
+import numpy as np  # useful for numerical computations.
+
+# imports the Natural Language Toolkit (NLTK) for text processing tasks like tokenization and stemming.
+import nltk
+
+# Imports the Snowball stemmer, a tool for reducing words to their root form.
+from nltk.stem.snowball import SnowballStemmer
+
+# imports the TF-IDF vectorizer for converting text data into numerical form for similarity calculations.
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+# Imports the cosine similarity function for comparing text documents based on their vector representation.
+from sklearn.metrics.pairwise import cosine_similarity
+
+# Imports Streamlit, a library for building interactive web apps.
 import streamlit as st
-import os
+
+# Imports the Python Imaging Library (PIL) for image handling.
 from PIL import Image
-import numpy as np
-import pickle
-import tensorflow
-from tensorflow.keras.preprocessing import image
-from tensorflow.keras.layers import GlobalMaxPooling2D
-from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input
-from sklearn.neighbors import NearestNeighbors
-from numpy.linalg import norm
 
-# Load feature list and filenames
-feature_list = np.array(pickle.load(open('embeddings.pkl', 'rb')))
-filenames = pickle.load(open('filenames.pkl', 'rb'))
+# Download the required NLTK data used for splitting text into tokens (words or sentences).
+nltk.download('punkt_tab')
 
-# Normalize the file paths to ensure consistency across environments
-def normalize_path(path):
-    return path.replace('\\', '/')
+# Load the dataset with caching to improve performance
+@st.cache_data
+# function to load the dataset.
+def load_data():
+    data = pd.read_csv('Ecommerce_product.csv')
+    data = data.drop('id', axis=1)
+    return data  # Returns the preprocessed dataset.
 
-# Load ResNet50 model
-model = ResNet50(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
-model.trainable = False
-model = tensorflow.keras.Sequential([
-    model,
-    GlobalMaxPooling2D()
-])
+# Define tokenizer and stemmer
+stemmer = SnowballStemmer('english')  # Initializes the Snowball stemmer for the English language.
 
-# Set up UI layout
-st.set_page_config(page_title='SwiftBuy', layout='wide')
-st.markdown("""
-    <style>
-    .main {
-        text-align: center;
-    }
-    .uploaded-img {
-        border-radius: 10px;
-        box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
-    }
-    .title {
-        font-size: 36px;
-        font-weight: bold;
-        text-align: center;
-        color: #ff5733;
-    }
-    .logo {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin-bottom: 10px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+def tokenize_and_stem(text):
+    # Tokenizes the text into words after converting it to lowercase.
+    tokens = nltk.word_tokenize(text.lower())
+    # Applies stemming to each token to reduce it to its root form.
+    stems = [stemmer.stem(t) for t in tokens]
+    return stems
 
-# Display logo and title
-st.image('swift.png', width=500)
-st.markdown("<div class='title'>SwiftBuy - AI-Powered Image Recommender System</div>", unsafe_allow_html=True)
+# Create stemmed tokens column
+# defines a function to add a new column of stemmed tokens to the dataset.
+def create_stemmed_tokens_column(data):
+    # Combines the Title and Description of each row, tokenizes and stems them, 
+    # and stores the result in a new column called stemmed_tokens.
+    data['stemmed_tokens'] = data.apply(
+        lambda row: tokenize_and_stem(row['Title'] + ' ' + row['Description']), axis=1
+    )
+    # Returns the updated dataset:
+    return data
 
-# Directory to save uploaded files
-upload_dir = 'uploads'
-if not os.path.exists(upload_dir):
-    os.makedirs(upload_dir)
+# -------- Define TF-IDF vectorizer and cosine similarity function
 
-def save_uploaded_file(uploaded_file):
-    """Save uploaded file to the specified directory."""
-    try:
-        file_path = os.path.join(upload_dir, uploaded_file.name)
-        with open(file_path, 'wb') as f:
-            f.write(uploaded_file.getbuffer())
-        return file_path
-    except Exception as e:
-        st.error(f"Error saving file: {e}")
+# initializes the TF-IDF vectorizer, specifying tokenize_and_stem as the tokenizer.
+tfidf_vectorizer = TfidfVectorizer(tokenizer=tokenize_and_stem, token_pattern=None)
+
+# Defines a function to compute cosine similarity between two sets of text tokens.
+def cosine_sim(text1, text2):
+    # Joins the tokens in text1,text2 into a single string.
+    text1_concatenated = ' '.join(text1)
+    text2_concatenated = ' '.join(text2)
+    # Computes the TF-IDF vectors for the two input texts.
+    tfidf_matrix = tfidf_vectorizer.fit_transform([text1_concatenated, text2_concatenated])
+    # ----- Returns the cosine similarity score between the two vectors.
+    return cosine_similarity(tfidf_matrix)[0][1]
+
+# Define search function for products based on a query.
+def search_products(query, data):
+    # Tokenizes and stems the user’s query.
+    query_stemmed = tokenize_and_stem(query)
+    # Computes the similarity of the query with each product’s stemmed tokens.
+    data['similarity'] = data['stemmed_tokens'].apply(lambda x: cosine_sim(query_stemmed, x))
+    # Sorts the dataset by similarity in descending order and selects the top 10 results.
+    results = data.sort_values(by=['similarity'], ascending=False).head(10)
+    
+    # Checks if no matching products are found.
+    if results.empty:
         return None
+    # Returns a subset of columns from the top results.
+    return results[['Title', 'Description', 'Category', 'similarity']]
 
-def feature_extraction(img_path, model):
-    """Extract features from the image using the pre-trained model."""
-    img = image.load_img(img_path, target_size=(224, 224))
-    img_array = image.img_to_array(img)
-    expanded_img_array = np.expand_dims(img_array, axis=0)
-    preprocessed_img = preprocess_input(expanded_img_array)
-    result = model.predict(preprocessed_img).flatten()
-    normalized_result = result / norm(result)
-    return normalized_result
+# Main function to run the Streamlit app
+def main():
+    # Load the image and display it
+    img = Image.open('swift.png')
+    
+    # Make the image responsive for mobile
+    st.image(img, width=st.columns([3, 1])[0].width * 0.8)  # Adjust width based on screen size
+    st.title("Search Engine and Product Recommendation System")
 
-def recommend(features, feature_list):
-    """Recommend similar images based on extracted features."""
-    neighbors = NearestNeighbors(n_neighbors=6, algorithm='brute', metric='euclidean')
-    neighbors.fit(feature_list)
-    distances, indices = neighbors.kneighbors([features])
-    return indices
+    # Load and preprocess the data
+    data = load_data()
+    data = create_stemmed_tokens_column(data)
 
-# File upload step
-uploaded_file = st.file_uploader("Choose an image", type=['png', 'jpg', 'jpeg'])
-if uploaded_file is not None:
-    file_path = save_uploaded_file(uploaded_file)
-    if file_path:
-        col1, col2 = st.columns([1, 2])
-        with col1:
-            display_image = Image.open(file_path)
-            st.image(display_image, caption='Uploaded Image', width=200)
-        with col2:
-            st.write("**Your uploaded image is successfully loaded. Click below to get recommendations!**")
-            if st.button('Get Recommendations', key='recommend_button'):
-                with st.spinner('Finding the best matches for you...'):
-                    features = feature_extraction(file_path, model)
-                    indices = recommend(features, feature_list)
-                
-                # Display recommended images
-                st.subheader("Recommended Images:")
-                cols = st.columns(5)
-                for i, col in enumerate(cols):
-                    if i < len(indices[0]):
-                        with col:
-                            recommended_image_path = normalize_path(filenames[indices[0][i]])
-                            try:
-                                recommended_image = Image.open(recommended_image_path)
-                                st.image(recommended_image, use_container_width=True)
-                            except FileNotFoundError:
-                                st.warning(f"Image not found: {recommended_image_path}")
-    else:
-        st.error("Some error occurred in file upload")
+    # ----------- User input and search functionality ---------
+    
+    # Create a 2-column layout for input field and button
+    col1, col2 = st.columns([3, 1])
+
+    with col1:
+        # Creates a text input field for the user to enter a query with a mobile-friendly width.
+        query = st.text_input("Enter Product Name", placeholder="Search for a product...", max_chars=50)
+
+    with col2:
+        # Adds a mobile-friendly search button.
+        submit = st.button('Search', use_container_width=True)
+
+    # Checks if the search button is clicked.
+    if submit:
+        if query:
+            # Searches for matching products.
+            res = search_products(query, data)
+            # Checks if any results are found.
+            if res is not None:
+                st.write(res)
+            else:
+                # Displays a message if no matches are found.
+                st.write("No matching products found. Please try a different query.")
+        else: 
+            # Handles cases where the query is empty.
+            st.write("Please enter a product name to search.")
+
+# Ensures the script runs only when executed directly.
+if __name__ == "__main__":
+    # Calls the main function to run the app.
+    main()
