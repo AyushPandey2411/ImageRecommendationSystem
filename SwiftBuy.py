@@ -26,14 +26,55 @@ model = tensorflow.keras.Sequential([
     GlobalMaxPooling2D()
 ])
 
-img = Image.open('swift.png')
-st.image(img, width=600)
-st.title('SwiftBuy Image Recommender System')
+# Set up UI layout
+st.set_page_config(page_title='SwiftBuy', layout='wide')
+st.markdown("""
+    <style>
+    .main {
+        text-align: center;
+    }
+    .uploaded-img {
+        border-radius: 10px;
+        box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    .title {
+        font-size: 36px;
+        font-weight: bold;
+        text-align: center;
+        color: #ff5733;
+        margin-bottom: 20px;
+    }
+    .logo {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    .recommend-button {
+        background-color: #ff5733;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 5px;
+        border: none;
+        font-size: 18px;
+        cursor: pointer;
+        width: 200px;
+    }
+    .recommend-button:hover {
+        background-color: #ff4511;
+    }
+    .recommendations-container {
+        margin-top: 40px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# Display logo and title
+st.image('swift.png', width=400)
+st.markdown("<div class='title'>SwiftBuy - AI-Powered Image Recommender System</div>", unsafe_allow_html=True)
 
 # Directory to save uploaded files
 upload_dir = 'uploads'
-
-# Create upload directory if it doesn't exist
 if not os.path.exists(upload_dir):
     os.makedirs(upload_dir)
 
@@ -43,7 +84,7 @@ def save_uploaded_file(uploaded_file):
         file_path = os.path.join(upload_dir, uploaded_file.name)
         with open(file_path, 'wb') as f:
             f.write(uploaded_file.getbuffer())
-        return file_path  # Return the path of the saved file
+        return file_path
     except Exception as e:
         st.error(f"Error saving file: {e}")
         return None
@@ -70,23 +111,24 @@ uploaded_file = st.file_uploader("Choose an image", type=['png', 'jpg', 'jpeg'])
 if uploaded_file is not None:
     file_path = save_uploaded_file(uploaded_file)
     if file_path:
-        # Display the uploaded file with smaller size
-        display_image = Image.open(file_path)
-        st.image(display_image, caption='Uploaded Image', use_container_width=True)
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            display_image = Image.open(file_path)
+            st.image(display_image, caption='Uploaded Image', width=200)  # Set width to 200px for smaller display
+        with col2:
+            st.write("**Your uploaded image is successfully loaded. Click below to get recommendations!**")
+            if st.button('Get Recommendations', key='recommend_button', help="Click to get similar images"):
+                with st.spinner('Finding the best matches for you...'):
+                    features = feature_extraction(file_path, model)
+                    indices = recommend(features, feature_list)
 
-        # Extract features and get recommendations with a spinner
-        with st.spinner('Processing your image...'):
-            if st.button('Get Recommendations'):
-                features = feature_extraction(file_path, model)
-                indices = recommend(features, feature_list)
-                
-                # Display the recommended images in a mobile-friendly way
+                # Display recommended images in a responsive grid
+                st.markdown("<div class='recommendations-container'></div>", unsafe_allow_html=True)
                 st.subheader("Recommended Images:")
                 cols = st.columns(5)
                 for i, col in enumerate(cols):
                     if i < len(indices[0]):
                         with col:
-                            # Ensure filenames are correct and use the full path
                             recommended_image_path = normalize_path(filenames[indices[0][i]])
                             try:
                                 recommended_image = Image.open(recommended_image_path)
