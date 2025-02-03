@@ -43,11 +43,17 @@ st.markdown("""
         text-align: center;
         color: #ff5733;
     }
+    .logo {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 10px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
 # Display logo and title
-st.image('swift.png', width=500)
+st.markdown("<div class='logo'><img src='swift.png' width='400'></div>", unsafe_allow_html=True)
 st.markdown("<div class='title'>SwiftBuy - AI-Powered Image Recommender System</div>", unsafe_allow_html=True)
 
 # Directory to save uploaded files
