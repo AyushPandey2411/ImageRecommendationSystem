@@ -36,11 +36,13 @@ st.markdown("""
         .stButton>button {border-radius: 10px; background-color: #ff5733; color: white; font-size: 16px; padding: 10px 20px;}
         .uploaded-img {border: 2px solid #ff5733; padding: 10px; border-radius: 10px;}
         .recommended-img {border: 2px solid #007BFF; padding: 5px; border-radius: 10px;}
+        .title-container {text-align: center;}
+        .title-container img {width: 300px; display: block; margin: auto;}
     </style>
 """, unsafe_allow_html=True)
 
 # Banner Image
-st.image("swift.png", width=500)
+st.markdown("<div class='title-container'><img src='swift.png'></div>", unsafe_allow_html=True)
 st.markdown("<h1 style='text-align: center; color: #FF5733; border-bottom: 4px solid #FF5733; padding-bottom: 10px;'>SwiftBuy Image Recommender System</h1>", unsafe_allow_html=True)
 
 # Directory to save uploaded files
@@ -85,7 +87,7 @@ if uploaded_file is not None:
     if file_path:
         # Display uploaded image with styling
         st.markdown("<div class='uploaded-img'>", unsafe_allow_html=True)
-        st.image(Image.open(file_path), caption='Uploaded Image', width=350)
+        st.image(Image.open(file_path), caption='Uploaded Image', width=400)
         st.markdown("</div>", unsafe_allow_html=True)
 
         # Get recommendations button
