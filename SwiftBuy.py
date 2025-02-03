@@ -53,7 +53,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # Display logo and title
-st.markdown("<div class='logo'><img src='swift.png' width='400'></div>", unsafe_allow_html=True)
+st.image('swift.png', width=500)
 st.markdown("<div class='title'>SwiftBuy - AI-Powered Image Recommender System</div>", unsafe_allow_html=True)
 
 # Directory to save uploaded files
