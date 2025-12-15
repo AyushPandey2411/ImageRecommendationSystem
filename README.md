@@ -1,4 +1,4 @@
-# SwiftBuy - AI-Powered Image Recommender System
+# SwiftBuy - AI Powered Image Recommender System
 
 ## 🚀 Live Demo
 
